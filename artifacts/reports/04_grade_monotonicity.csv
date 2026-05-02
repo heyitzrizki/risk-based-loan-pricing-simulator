@@ -1,0 +1,4 @@
+split,is_monotonic_default_rate,min_diff
+train,True,0.033379298139138314
+valid,True,0.040909785203398094
+test,True,0.035882748256775905

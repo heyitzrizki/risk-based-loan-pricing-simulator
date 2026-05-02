@@ -1,0 +1,9 @@
+section,note
+PD,Final PD is produced by raw XGBoost probability because sigmoid calibration worsened Brier Score and ECE.
+EAD,EAD is proxied by loan_amnt.
+LGD,LGD is assumption-based by internal grade because recovery data is unavailable.
+Expected Loss,Expected Loss = calibrated_pd × LGD × EAD.
+Required Rate,Required Rate = funding cost + operating cost + expected loss rate + target margin.
+Expected Profit,Expected Profit = interest income - funding cost - operating cost - expected loss.
+Pricing Gap,Pricing Gap = actual interest rate - required risk-based interest rate.
+Portfolio Frontier,"Portfolio frontier simulates PD approval thresholds and compares approval rate, expected loss, and expected profit."

@@ -1,0 +1,10 @@
+section,note
+Final PD,Final PD is produced by raw XGBoost probability. Sigmoid calibration was tested but not selected because it worsened Brier Score and Expected Calibration Error.
+Internal Grade,Internal grades are derived from calibrated PD using validation-set supervised binning and validated on the holdout test set for monotonic default rates.
+Expected Loss,Expected Loss is calculated as PD × LGD × EAD. EAD is proxied by loan amount.
+LGD,LGD is assumption-based by internal grade because recovery and write-off recovery data are unavailable in the Lending Club dataset.
+Required Rate,"Required Rate equals funding cost, operating cost, annualized expected loss rate, and target margin."
+Pricing Gap,Pricing Gap compares actual Lending Club interest rate against the required risk-based rate.
+Economic Profit,"Economic Profit adjusts expected profit by subtracting capital charge, collection cost, and nonlinear tail-risk penalty."
+Policy Comparison,"Approval policies are compared using approval rate, expected loss, economic profit, economic return, default rate, and high-risk exposure."
+Limitation,"This is a portfolio analytics simulator, not a production regulatory credit decisioning system. LGD, capital cost, collection cost, and tail-risk penalty are simulation assumptions."

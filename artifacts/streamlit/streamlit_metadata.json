@@ -1,0 +1,29 @@
+{
+  "project_name": "Risk-Based Loan Pricing & Profitability Simulator",
+  "dataset": "Lending Club loan-level data",
+  "modeling_unit": "loan-level observation",
+  "final_pd_model": "XGBoost raw probability",
+  "final_pd_column": "calibrated_pd",
+  "internal_grade_method": "validation-set decision-tree supervised binning",
+  "pricing_engine": {
+    "expected_loss": "PD \u00d7 LGD \u00d7 EAD",
+    "required_rate": "funding_cost + operating_cost + annualized_expected_loss_rate + target_margin",
+    "pricing_gap": "actual_rate - required_rate",
+    "economic_profit": "expected_profit - capital_charge - collection_cost - tail_risk_penalty"
+  },
+  "default_dashboard_policy": "Balanced",
+  "streamlit_sample_size": 14998,
+  "full_test_rows": 59405,
+  "created_artifacts": [
+    "streamlit_portfolio_kpi.csv",
+    "streamlit_kpi_cards.csv",
+    "streamlit_grade_profitability.csv",
+    "streamlit_policy_comparison.csv",
+    "streamlit_scenario_policy_summary.csv",
+    "streamlit_approval_summary.csv",
+    "streamlit_pricing_sample.csv",
+    "streamlit_lgd_assumptions.csv",
+    "streamlit_methodology_notes.csv",
+    "streamlit_metadata.json"
+  ]
+}

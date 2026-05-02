@@ -1,0 +1,12 @@
+metric,value,format
+Total Loans,59405.0,integer
+Total EAD,838615300.0,currency
+Average PD,0.1960421664964733,percent
+Actual Default Rate,0.1961282720309738,percent
+Average Actual Rate,0.1366186819291305,percent
+Average Required Rate,0.1351118706146808,percent
+Expected Loss,84125994.4379227,currency
+Expected Profit,184169017.0995773,currency
+Economic Profit,139079657.3064963,currency
+Economic Return,0.1658444072109062,percent
+Underpriced Share,0.4074572847403417,percent
