@@ -18,22 +18,19 @@ st.set_page_config(
 
 artifacts = load_streamlit_artifacts()
 pricing_sample = artifacts["pricing_sample"]
-lgd_assumptions = artifacts["lgd_assumptions"]
-methodology_notes = artifacts["methodology_notes"]
 
 st.title("Borrower-Level Pricing Explorer")
 
 st.markdown(
     """
-    This page explores individual loan-level pricing outputs:
-    predicted default risk, internal grade, expected loss, required rate,
-    pricing gap, and economic profit.
+    Explore loan-level pricing outputs from the holdout portfolio sample:
+    PD, internal grade, required rate, pricing gap, and economic profit.
     """
 )
 
 st.caption(
-    "The loan-level table uses a stratified deployment sample for fast interaction. "
-    "Portfolio-level KPIs in the executive page are computed from the full holdout test set."
+    "This page uses a stratified deployment sample for fast interaction. "
+    "Portfolio-level KPIs are computed from the full holdout test set."
 )
 
 st.sidebar.title("Borrower Pricing Filters")
@@ -99,14 +96,12 @@ filtered = filtered[
 st.header("Filtered Loan Pool Summary")
 
 col1, col2, col3, col4 = st.columns(4)
-
 col1.metric("Loans", f"{len(filtered):,.0f}")
 col2.metric("Total EAD", fmt_currency(filtered["ead"].sum()))
 col3.metric("Average PD", fmt_pct(filtered["calibrated_pd"].mean()))
 col4.metric("Average Economic Return", fmt_pct(filtered["economic_return"].mean()))
 
 col5, col6, col7, col8 = st.columns(4)
-
 col5.metric("Expected Loss", fmt_currency(filtered["expected_loss"].sum()))
 col6.metric("Expected Profit", fmt_currency(filtered["expected_profit"].sum()))
 col7.metric("Economic Profit", fmt_currency(filtered["economic_profit"].sum()))
@@ -117,7 +112,7 @@ col8.metric(
     else "N/A",
 )
 
-st.header("Borrower Pricing Diagnostics")
+st.header("Loan Diagnostics")
 
 if len(filtered) == 0:
     st.warning("No loans match the selected filters.")
@@ -125,21 +120,6 @@ else:
     col1, col2 = st.columns(2)
 
     with col1:
-        fig = px.histogram(
-            filtered,
-            x="calibrated_pd",
-            color="internal_grade",
-            nbins=40,
-            title="PD Distribution by Internal Grade",
-            category_orders={"internal_grade": GRADE_ORDER},
-            labels={
-                "calibrated_pd": "Predicted Default Probability",
-                "internal_grade": "Internal Grade",
-            },
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    with col2:
         fig = px.scatter(
             filtered,
             x="required_rate",
@@ -153,50 +133,21 @@ else:
                 "pricing_gap",
                 "economic_profit",
             ],
-            title="Actual Rate vs Required Risk-Based Rate",
+            title="Actual Rate vs Required Rate",
             labels={
                 "required_rate": "Required Rate",
                 "actual_rate": "Actual Rate",
-                "pricing_status": "Pricing Status",
             },
         )
         st.plotly_chart(fig, use_container_width=True)
 
-    col3, col4 = st.columns(2)
-
-    with col3:
-        grade_summary = (
-            filtered
-            .groupby("internal_grade")
-            .agg(
-                n_loans=("loan_amnt", "size"),
-                avg_pd=("calibrated_pd", "mean"),
-                avg_pricing_gap=("pricing_gap", "mean"),
-                total_economic_profit=("economic_profit", "sum"),
-            )
-            .reset_index()
-        )
-
-        fig = px.bar(
-            grade_summary,
-            x="internal_grade",
-            y="total_economic_profit",
-            title="Economic Profit by Internal Grade",
-            category_orders={"internal_grade": GRADE_ORDER},
-            labels={
-                "internal_grade": "Internal Grade",
-                "total_economic_profit": "Economic Profit",
-            },
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    with col4:
+    with col2:
         fig = px.box(
             filtered,
             x="internal_grade",
             y="pricing_gap",
             category_orders={"internal_grade": GRADE_ORDER},
-            title="Pricing Gap Distribution by Internal Grade",
+            title="Pricing Gap by Internal Grade",
             labels={
                 "internal_grade": "Internal Grade",
                 "pricing_gap": "Pricing Gap",
@@ -234,15 +185,5 @@ table_cols = [col for col in table_cols if col in filtered.columns]
 st.dataframe(
     filtered[table_cols].sort_values("calibrated_pd", ascending=False),
     use_container_width=True,
-    height=500,
+    height=550,
 )
-
-st.header("Pricing Methodology")
-
-with st.expander("LGD assumptions", expanded=False):
-    st.dataframe(lgd_assumptions, use_container_width=True)
-
-with st.expander("Methodology notes", expanded=False):
-    for _, row in methodology_notes.iterrows():
-        st.markdown(f"**{row['section']}**")
-        st.write(row["note"])

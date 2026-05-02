@@ -2,8 +2,6 @@ import plotly.express as px
 import streamlit as st
 
 from utils import (
-    fmt_currency,
-    fmt_pct,
     load_streamlit_artifacts,
     prepare_policy_display,
     prepare_scenario_display,
@@ -19,23 +17,20 @@ artifacts = load_streamlit_artifacts()
 
 policy_comparison = artifacts["policy_comparison"]
 scenario_policy_summary = artifacts["scenario_policy_summary"]
-approval_summary = artifacts["approval_summary"]
 methodology_notes = artifacts["methodology_notes"]
 
 st.title("Portfolio Frontier")
 
 st.markdown(
     """
-    This page visualizes the portfolio trade-off frontier across approval policies:
-    approval rate, default risk, expected loss, economic profit, economic return,
-    and high-risk exposure.
+    Visualize risk-return trade-offs across approval policies and business scenarios.
     """
 )
 
 policy_display = prepare_policy_display(policy_comparison)
 scenario_display = prepare_scenario_display(scenario_policy_summary)
 
-st.header("Risk-Return Policy Frontier")
+st.header("Risk-Return Frontier")
 
 col1, col2 = st.columns(2)
 
@@ -49,7 +44,7 @@ with col1:
         hover_name="policy",
         title="Default Rate vs Economic Return",
         labels={
-            "actual_default_rate_pct": "Actual Default Rate (%)",
+            "actual_default_rate_pct": "Default Rate (%)",
             "portfolio_economic_return_pct": "Economic Return (%)",
             "total_economic_profit_m": "Economic Profit ($M)",
         },
@@ -73,54 +68,7 @@ with col2:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-st.header("Scale, Profit, and Risk Appetite")
-
-policy_risk_display = policy_comparison.copy()
-policy_risk_display["approval_rate_pct"] = policy_risk_display["approval_rate"] * 100
-policy_risk_display["actual_default_rate_pct"] = (
-    policy_risk_display["actual_default_rate"] * 100
-)
-policy_risk_display["high_risk_share_pct"] = (
-    policy_risk_display["high_risk_share"] * 100
-)
-policy_risk_display["total_expected_loss_m"] = (
-    policy_risk_display["total_expected_loss"] / 1_000_000
-)
-policy_risk_display["total_economic_profit_m"] = (
-    policy_risk_display["total_economic_profit"] / 1_000_000
-)
-
-col1, col2 = st.columns(2)
-
-with col1:
-    fig = px.bar(
-        policy_risk_display,
-        x="policy",
-        y=["total_expected_loss_m", "total_economic_profit_m"],
-        barmode="group",
-        title="Expected Loss vs Economic Profit",
-        labels={
-            "policy": "Policy",
-            "value": "Amount ($M)",
-            "variable": "Metric",
-        },
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-with col2:
-    fig = px.bar(
-        policy_risk_display,
-        x="policy",
-        y="high_risk_share_pct",
-        title="High-Risk Exposure by Policy",
-        labels={
-            "policy": "Policy",
-            "high_risk_share_pct": "High-Risk Share (%)",
-        },
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-st.header("Scenario Frontier")
+st.header("Scenario Sensitivity")
 
 selected_metric = st.selectbox(
     "Scenario metric",
@@ -176,23 +124,58 @@ fig = px.line(
 )
 st.plotly_chart(fig, use_container_width=True)
 
-st.header("Policy Frontier Table")
-st.dataframe(policy_comparison, use_container_width=True)
+st.header("Loss-Profit Trade-Off")
 
-st.header("Scenario Policy Table")
+policy_risk_display = policy_comparison.copy()
+policy_risk_display["total_expected_loss_m"] = (
+    policy_risk_display["total_expected_loss"] / 1_000_000
+)
+policy_risk_display["total_economic_profit_m"] = (
+    policy_risk_display["total_economic_profit"] / 1_000_000
+)
+policy_risk_display["high_risk_share_pct"] = policy_risk_display["high_risk_share"] * 100
+
+col1, col2 = st.columns(2)
+
+with col1:
+    fig = px.bar(
+        policy_risk_display,
+        x="policy",
+        y=["total_expected_loss_m", "total_economic_profit_m"],
+        barmode="group",
+        title="Expected Loss vs Economic Profit",
+        labels={
+            "policy": "Policy",
+            "value": "Amount ($M)",
+            "variable": "Metric",
+        },
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+with col2:
+    fig = px.bar(
+        policy_risk_display,
+        x="policy",
+        y="high_risk_share_pct",
+        title="High-Risk Exposure by Policy",
+        labels={
+            "policy": "Policy",
+            "high_risk_share_pct": "High-Risk Share (%)",
+        },
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+st.header("Scenario Table")
 st.dataframe(scenario_policy_summary, use_container_width=True)
-
-st.header("Approved vs Rejected Context")
-st.dataframe(approval_summary, use_container_width=True)
 
 st.header("Interpretation Guide")
 
 st.markdown(
     """
-    - **Conservative** policy keeps default risk and high-risk exposure low, but sacrifices scale.
-    - **Balanced** policy is the default dashboard policy because it improves approval volume while controlling high-risk exposure.
-    - **Growth** policy increases scale and profit but accepts higher default risk.
-    - **Aggressive** policy maximizes approval scale but carries the highest risk concentration.
+    - **Conservative** keeps risk low but sacrifices scale.
+    - **Balanced** is the default operating policy for controlled risk-taking.
+    - **Growth** increases scale and profit with higher risk exposure.
+    - **Aggressive** maximizes scale but creates the highest risk concentration.
     """
 )
 

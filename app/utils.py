@@ -255,3 +255,129 @@ def get_selected_policy_row(policy_comparison: pd.DataFrame, selected_policy: st
         return policy_comparison.iloc[0]
 
     return matched.iloc[0]
+
+    def calculate_manual_pricing(
+    loan_amount: float,
+    term_months: int,
+    offered_rate: float,
+    pd_value: float,
+    lgd: float,
+    funding_cost_rate: float,
+    operating_cost_rate: float,
+    target_margin_rate: float,
+    capital_cost_rate: float,
+    collection_cost_rate: float,
+    tail_risk_multiplier: float,
+    pricing_tolerance: float = 0.01,
+    max_allowed_rate: float = 0.30,
+) -> dict:
+    term_years = term_months / 12
+
+    ead = loan_amount
+    actual_rate = offered_rate
+
+    expected_loss = pd_value * lgd * ead
+    lifetime_expected_loss_rate = pd_value * lgd
+    annualized_expected_loss_rate = lifetime_expected_loss_rate / term_years
+
+    required_rate = (
+        funding_cost_rate
+        + operating_cost_rate
+        + annualized_expected_loss_rate
+        + target_margin_rate
+    )
+
+    required_rate_capped = min(required_rate, max_allowed_rate)
+    pricing_gap = actual_rate - required_rate
+
+    if pricing_gap < -pricing_tolerance:
+        pricing_status = "Underpriced"
+    elif pricing_gap <= pricing_tolerance:
+        pricing_status = "Fairly Priced"
+    else:
+        pricing_status = "Overpriced"
+
+    interest_income = ead * actual_rate * term_years
+    funding_cost = ead * funding_cost_rate * term_years
+    operating_cost = ead * operating_cost_rate * term_years
+
+    expected_profit = (
+        interest_income
+        - funding_cost
+        - operating_cost
+        - expected_loss
+    )
+
+    risk_adjusted_return = expected_profit / ead if ead else 0
+
+    capital_requirement = ead * pd_value * lgd
+    capital_charge = capital_requirement * capital_cost_rate * term_years
+    collection_cost = expected_loss * collection_cost_rate
+    tail_risk_penalty = ead * (pd_value ** 2) * lgd * tail_risk_multiplier
+
+    economic_profit = (
+        expected_profit
+        - capital_charge
+        - collection_cost
+        - tail_risk_penalty
+    )
+
+    economic_return = economic_profit / ead if ead else 0
+
+    repriced_interest_income = ead * required_rate_capped * term_years
+    repriced_expected_profit = (
+        repriced_interest_income
+        - funding_cost
+        - operating_cost
+        - expected_loss
+    )
+
+    repriced_economic_profit = (
+        repriced_expected_profit
+        - capital_charge
+        - collection_cost
+        - tail_risk_penalty
+    )
+
+    repriced_economic_return = repriced_economic_profit / ead if ead else 0
+
+    if economic_profit >= 0 and required_rate <= max_allowed_rate:
+        decision = "Approve at Current Rate"
+    elif repriced_economic_profit >= 0 and required_rate <= max_allowed_rate:
+        decision = "Approve if Repriced"
+    elif required_rate > max_allowed_rate and pd_value < 0.35:
+        decision = "Manual Review"
+    else:
+        decision = "Reject"
+
+    return {
+        "loan_amount": loan_amount,
+        "term_months": term_months,
+        "term_years": term_years,
+        "pd": pd_value,
+        "lgd": lgd,
+        "ead": ead,
+        "offered_rate": actual_rate,
+        "required_rate": required_rate,
+        "required_rate_capped": required_rate_capped,
+        "pricing_gap": pricing_gap,
+        "pricing_status": pricing_status,
+        "expected_loss": expected_loss,
+        "lifetime_expected_loss_rate": lifetime_expected_loss_rate,
+        "annualized_expected_loss_rate": annualized_expected_loss_rate,
+        "interest_income": interest_income,
+        "funding_cost": funding_cost,
+        "operating_cost": operating_cost,
+        "expected_profit": expected_profit,
+        "risk_adjusted_return": risk_adjusted_return,
+        "capital_requirement": capital_requirement,
+        "capital_charge": capital_charge,
+        "collection_cost": collection_cost,
+        "tail_risk_penalty": tail_risk_penalty,
+        "economic_profit": economic_profit,
+        "economic_return": economic_return,
+        "repriced_expected_profit": repriced_expected_profit,
+        "repriced_economic_profit": repriced_economic_profit,
+        "repriced_economic_return": repriced_economic_return,
+        "decision": decision,
+    }

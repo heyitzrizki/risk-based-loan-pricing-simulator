@@ -9,7 +9,6 @@ from utils import (
     load_streamlit_artifacts,
     prepare_grade_display,
     prepare_policy_display,
-    prepare_scenario_display,
     pricing_status_counts,
 )
 
@@ -24,8 +23,6 @@ artifacts = load_streamlit_artifacts()
 portfolio_kpi = artifacts["portfolio_kpi"]
 grade_profitability = artifacts["grade_profitability"]
 policy_comparison = artifacts["policy_comparison"]
-scenario_policy_summary = artifacts["scenario_policy_summary"]
-approval_summary = artifacts["approval_summary"]
 pricing_sample = artifacts["pricing_sample"]
 metadata = artifacts["metadata"]
 
@@ -33,8 +30,8 @@ st.title("Executive Overview")
 
 st.markdown(
     """
-    This page summarizes the portfolio-level impact of the risk-based pricing engine:
-    expected loss, economic profit, approval policy trade-offs, and grade-level risk.
+    High-level summary of the loan pricing engine, portfolio risk, economic profit,
+    and approval policy trade-offs.
     """
 )
 
@@ -58,21 +55,15 @@ col7.metric("Economic Profit", fmt_currency(kpi["total_economic_profit"]))
 col8.metric("Economic Return", fmt_pct(kpi["portfolio_economic_return"]))
 
 st.caption(
-    "Economic profit subtracts capital charge, collection cost, and nonlinear tail-risk penalty "
-    "from accounting-style expected profit."
+    "Economic profit adjusts accounting-style expected profit by subtracting capital charge, "
+    "collection cost, and nonlinear tail-risk penalty."
 )
 
-st.header("Pricing and Approval Overview")
+st.header("Executive Charts")
 
 pricing_counts = pricing_status_counts(pricing_sample)
-
-approval_display = approval_summary.copy()
-approval_display["total_economic_profit_m"] = (
-    approval_display["total_economic_profit"] / 1_000_000
-)
-approval_display["actual_default_rate_pct"] = (
-    approval_display["actual_default_rate"] * 100
-)
+policy_display = prepare_policy_display(policy_comparison)
+grade_display = prepare_grade_display(grade_profitability)
 
 col1, col2 = st.columns(2)
 
@@ -87,28 +78,39 @@ with col1:
     st.plotly_chart(fig, use_container_width=True)
 
 with col2:
-    fig = px.bar(
-        approval_display,
-        x="approval_segment",
-        y="total_economic_profit_m",
-        title="Economic Profit by Approval Segment",
+    fig = px.scatter(
+        policy_display,
+        x="approval_rate_pct",
+        y="actual_default_rate_pct",
+        size="total_economic_profit_m",
+        hover_name="policy",
+        color="policy",
+        title="Approval Rate vs Default Rate",
         labels={
-            "approval_segment": "Approval Segment",
+            "approval_rate_pct": "Approval Rate (%)",
+            "actual_default_rate_pct": "Actual Default Rate (%)",
             "total_economic_profit_m": "Economic Profit ($M)",
         },
     )
     st.plotly_chart(fig, use_container_width=True)
 
-st.subheader("Approved vs Rejected Summary")
-st.dataframe(approval_summary, use_container_width=True)
+col3, col4 = st.columns(2)
 
-st.header("Approval Policy Comparison")
+with col3:
+    fig = px.bar(
+        grade_display,
+        x="internal_grade",
+        y="actual_default_rate_pct",
+        title="Default Rate by Internal Grade",
+        category_orders={"internal_grade": GRADE_ORDER},
+        labels={
+            "internal_grade": "Internal Grade",
+            "actual_default_rate_pct": "Default Rate (%)",
+        },
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
-policy_display = prepare_policy_display(policy_comparison)
-
-col1, col2 = st.columns(2)
-
-with col1:
+with col4:
     fig = px.bar(
         policy_display,
         x="policy",
@@ -121,75 +123,16 @@ with col1:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-with col2:
-    fig = px.scatter(
-        policy_display,
-        x="approval_rate_pct",
-        y="actual_default_rate_pct",
-        size="total_economic_profit_m",
-        hover_name="policy",
-        title="Approval Rate vs Default Rate",
-        labels={
-            "approval_rate_pct": "Approval Rate (%)",
-            "actual_default_rate_pct": "Actual Default Rate (%)",
-        },
-    )
-    st.plotly_chart(fig, use_container_width=True)
+st.header("Policy Snapshot")
+compact_policy_cols = [
+    "policy",
+    "approval_rate",
+    "actual_default_rate",
+    "avg_pd",
+    "total_economic_profit",
+    "portfolio_economic_return",
+    "high_risk_share",
+]
 
-st.dataframe(policy_comparison, use_container_width=True)
-
-st.header("Internal Grade Profitability")
-
-grade_display = prepare_grade_display(grade_profitability)
-
-col1, col2 = st.columns(2)
-
-with col1:
-    fig = px.bar(
-        grade_display,
-        x="internal_grade",
-        y="actual_default_rate_pct",
-        title="Actual Default Rate by Internal Grade",
-        category_orders={"internal_grade": GRADE_ORDER},
-        labels={
-            "internal_grade": "Internal Grade",
-            "actual_default_rate_pct": "Default Rate (%)",
-        },
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-with col2:
-    fig = px.bar(
-        grade_display,
-        x="internal_grade",
-        y="total_economic_profit_m",
-        title="Economic Profit by Internal Grade",
-        category_orders={"internal_grade": GRADE_ORDER},
-        labels={
-            "internal_grade": "Internal Grade",
-            "total_economic_profit_m": "Economic Profit ($M)",
-        },
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-st.dataframe(grade_profitability, use_container_width=True)
-
-st.header("Scenario Sensitivity")
-
-scenario_display = prepare_scenario_display(scenario_policy_summary)
-
-fig = px.line(
-    scenario_display,
-    x="policy",
-    y="portfolio_economic_return_pct",
-    color="scenario",
-    markers=True,
-    title="Economic Return Across Scenarios",
-    labels={
-        "policy": "Policy",
-        "portfolio_economic_return_pct": "Economic Return (%)",
-    },
-)
-st.plotly_chart(fig, use_container_width=True)
-
-st.dataframe(scenario_policy_summary, use_container_width=True)
+compact_policy_cols = [col for col in compact_policy_cols if col in policy_comparison.columns]
+st.dataframe(policy_comparison[compact_policy_cols], use_container_width=True)
