@@ -256,7 +256,7 @@ def get_selected_policy_row(policy_comparison: pd.DataFrame, selected_policy: st
 
     return matched.iloc[0]
 
-    def calculate_manual_pricing(
+def calculate_manual_pricing(
     loan_amount: float,
     term_months: int,
     offered_rate: float,
