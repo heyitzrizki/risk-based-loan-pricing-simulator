@@ -31,16 +31,21 @@ st.markdown(
 
 grade_options = grade_profitability["internal_grade"].dropna().tolist()
 
-grade_reference = grade_profitability[
-    [
-        "internal_grade",
-        "avg_pd",
-        "avg_lgd",
-        "avg_actual_rate",
-        "avg_required_rate",
-        "actual_default_rate",
-    ]
-].copy()
+grade_reference_cols = [
+    "internal_grade",
+    "avg_pd",
+    "avg_lgd",
+    "avg_actual_rate",
+    "avg_required_rate",
+    "actual_default_rate",
+]
+
+grade_reference_cols = [
+    col for col in grade_reference_cols
+    if col in grade_profitability.columns
+]
+
+grade_reference = grade_profitability[grade_reference_cols].copy()
 
 st.sidebar.title("Simulation Mode")
 
@@ -70,13 +75,16 @@ with col2:
     )
 
 with col3:
-    offered_rate = st.number_input(
-        "Offered Annual Interest Rate (%)",
-        min_value=0.0,
-        max_value=40.0,
-        value=13.5,
-        step=0.25,
-    ) / 100
+    offered_rate = (
+        st.number_input(
+            "Offered Annual Interest Rate (%)",
+            min_value=0.0,
+            max_value=40.0,
+            value=13.5,
+            step=0.25,
+        )
+        / 100
+    )
 
 st.header("Risk Inputs")
 
@@ -97,13 +105,14 @@ lgd_row = lgd_assumptions[
     lgd_assumptions["internal_grade"].eq(selected_grade)
 ]
 
-default_lgd = (
-    float(lgd_row["lgd_assumption"].iloc[0])
-    if not lgd_row.empty and "lgd_assumption" in lgd_row.columns
-    else float(grade_row.get("avg_lgd", 0.4))
-)
+if not lgd_row.empty and "lgd_assumption" in lgd_row.columns:
+    default_lgd = float(lgd_row["lgd_assumption"].iloc[0])
+elif "avg_lgd" in grade_row.index:
+    default_lgd = float(grade_row["avg_lgd"])
+else:
+    default_lgd = 0.4
 
-default_pd = float(grade_row["avg_pd"])
+default_pd = float(grade_row["avg_pd"]) if "avg_pd" in grade_row.index else 0.15
 
 with col2:
     if pd_mode == "Use internal grade average PD":
@@ -138,53 +147,68 @@ st.header("Business Assumptions")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    funding_cost_rate = st.number_input(
-        "Funding Cost (%)",
-        min_value=0.0,
-        max_value=25.0,
-        value=4.0,
-        step=0.25,
-    ) / 100
+    funding_cost_rate = (
+        st.number_input(
+            "Funding Cost (%)",
+            min_value=0.0,
+            max_value=25.0,
+            value=4.0,
+            step=0.25,
+        )
+        / 100
+    )
 
 with col2:
-    operating_cost_rate = st.number_input(
-        "Operating Cost (%)",
-        min_value=0.0,
-        max_value=25.0,
-        value=2.0,
-        step=0.25,
-    ) / 100
+    operating_cost_rate = (
+        st.number_input(
+            "Operating Cost (%)",
+            min_value=0.0,
+            max_value=25.0,
+            value=2.0,
+            step=0.25,
+        )
+        / 100
+    )
 
 with col3:
-    target_margin_rate = st.number_input(
-        "Target Margin (%)",
-        min_value=0.0,
-        max_value=30.0,
-        value=5.0,
-        step=0.25,
-    ) / 100
+    target_margin_rate = (
+        st.number_input(
+            "Target Margin (%)",
+            min_value=0.0,
+            max_value=30.0,
+            value=5.0,
+            step=0.25,
+        )
+        / 100
+    )
 
 st.header("Economic Risk Assumptions")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    capital_cost_rate = st.number_input(
-        "Capital Cost (%)",
-        min_value=0.0,
-        max_value=30.0,
-        value=8.0,
-        step=0.25,
-    ) / 100
+    capital_cost_rate = (
+        st.number_input(
+            "Capital Cost (%)",
+            min_value=0.0,
+            max_value=30.0,
+            value=8.0,
+            step=0.25,
+        )
+        / 100
+    )
 
 with col2:
-    collection_cost_rate = st.number_input(
-        "Collection Cost on EL (%)",
-        min_value=0.0,
-        max_value=50.0,
-        value=10.0,
-        step=1.0,
-    ) / 100
+    collection_cost_rate = (
+        st.number_input(
+            "Collection Cost on EL (%)",
+            min_value=0.0,
+            max_value=50.0,
+            value=10.0,
+            step=1.0,
+        )
+        / 100
+    )
 
 with col3:
     tail_risk_multiplier = st.number_input(
@@ -254,12 +278,14 @@ result_table = pd.DataFrame(
     ]
 )
 
+
 def format_result(row):
     if row["format"] == "currency":
         return fmt_currency(row["value"])
     if row["format"] == "percent":
         return fmt_pct(row["value"])
     return row["value"]
+
 
 result_table["display_value"] = result_table.apply(format_result, axis=1)
 
@@ -270,7 +296,10 @@ st.dataframe(
 
 st.header("Grade Reference")
 
-st.dataframe(grade_reference, use_container_width=True)
+if grade_reference.empty:
+    st.info("Grade reference columns are not available in the current artifact.")
+else:
+    st.dataframe(grade_reference, use_container_width=True)
 
 st.header("Methodology Notes")
 
@@ -287,6 +316,9 @@ notes = methodology_notes[
     methodology_notes["section"].isin(selected_sections)
 ].copy()
 
-for _, row in notes.iterrows():
-    with st.expander(str(row["section"])):
-        st.write(row["note"])
+if notes.empty:
+    st.info("No selected methodology notes are available in the current artifact.")
+else:
+    for _, row in notes.iterrows():
+        with st.expander(str(row["section"])):
+            st.write(row["note"])
